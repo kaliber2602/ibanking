@@ -1,66 +1,94 @@
-// User mẫu cho phần User Information
-const userInfo = {
-    fullName: 'Phạm Minh C',
-    email: 'phamminhc@kth.edu.vn',
-    balance: 12000000
-};
 
-// Hàm load dữ liệu user lên các box
-function loadUserInfo() {
-    const fullNameBox = document.getElementById('fullName');
-    const emailBox = document.getElementById('emailAddress');
-    const balanceBox = document.getElementById('systemBalance');
-    if (fullNameBox) fullNameBox.value = userInfo.fullName;
-    if (emailBox) emailBox.value = userInfo.email;
-    if (balanceBox) balanceBox.value = userInfo.balance.toLocaleString() + ' VND';
-    // Đảm bảo các trường không chỉnh sửa được
-    if (fullNameBox) fullNameBox.readOnly = true;
-    if (emailBox) emailBox.readOnly = true;
-    if (balanceBox) balanceBox.readOnly = true;
-}
-
-// Gọi hàm loadUserInfo khi trang đã load xong
-window.addEventListener('DOMContentLoaded', loadUserInfo);
-// dashboard.js
-// Xử lý tìm kiếm và hiển thị popup thông tin sinh viên
-
-// Data mẫu sinh viên
-const students = [
-    {
-        id: '20210001',
-        fullName: 'Nguyễn Văn A',
-        class: 'K65CNTT',
-        email: 'nguyenvana@kth.edu.vn',
-        tuition: 5000000
-    },
-    {
-        id: '20210002',
-        fullName: 'Trần Thị B',
-        class: 'K65QTKD',
-        email: 'tranthib@kth.edu.vn',
-        tuition: 4500000
+// Hàm load dữ liệu user từ Gateway
+async function loadUserInfo() {
+    const username = localStorage.getItem("username");
+    if (!username) {
+        window.location.href = "/"; // nếu chưa đăng nhập → về trang chủ
+        return;
     }
-];
 
-// Hàm tìm sinh viên theo ID - api
-function findStudentById(id) {
-    return students.find(sv => sv.id === id);
+    try {
+        const response = await fetch(`/user-info?username=${encodeURIComponent(username)}`);
+        const result = await response.json();
+
+        if (result.success) {
+            const user = result.data;
+            document.getElementById("fullName").value = user.full_name;
+            document.getElementById("phoneNumber").value = user.phone;
+            document.getElementById("emailAddress").value = user.email;
+        } else {
+            alert("Không thể tải thông tin người dùng.");
+        }
+    } catch (error) {
+        alert("Lỗi kết nối tới máy chủ.");
+    }
 }
 
-// Hàm render popup thông tin sinh viên
+// Hàm tải lịch sử giao dịch
+async function loadTransactionHistory() {
+    const username = localStorage.getItem("username");
+    if (!username) return;
+
+    try {
+        const response = await fetch("/transactions", {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json"
+            },
+            body: JSON.stringify({ username })
+        });
+
+        const result = await response.json();
+
+        if (result.success) {
+            const tableBody = document.getElementById("transactionTable");
+            tableBody.innerHTML = "";
+
+            result.data.forEach(tx => {
+                const row = document.createElement("tr");
+                row.innerHTML = `
+                    <td>${tx.transaction_id}</td>
+                    <td>${new Date(tx.created_at).toLocaleString()}</td>
+                    <td>${tx.username}</td>
+                    <td>${tx.payment_id ?? '-'}</td>
+                    <td>${parseFloat(tx.amount).toLocaleString()} VND</td>
+                    <td><span class="badge ${tx.status === 'success' ? 'bg-success' : 'bg-danger'}">${tx.status}</span></td>
+                `;
+                tableBody.appendChild(row);
+            });
+        } else {
+            alert("Không thể tải lịch sử giao dịch.");
+        }
+    } catch (error) {
+        alert("Lỗi khi tải giao dịch.");
+    }
+}
+
+// Hàm gọi Gateway để tìm sinh viên theo ID
+async function findStudentById(id) {
+    try {
+        const response = await fetch(`/gateway/find-student.php?id=${encodeURIComponent(id)}`);
+        const result = await response.json();
+        return result.success ? result.data : null;
+    } catch (error) {
+        console.error("Lỗi khi gọi find-student.php:", error);
+        return null;
+    }
+}
+
+// Hàm hiển thị popup thông tin sinh viên
 function showStudentPopup(student) {
-    // Tạo nội dung popup
     const popupHtml = `
         <div id="studentPopup" style="position:fixed;top:0;left:0;width:100vw;height:100vh;background:rgba(0,0,0,0.4);display:flex;align-items:center;justify-content:center;z-index:9999;">
             <div style="background:#fff;padding:32px 24px;border-radius:8px;min-width:320px;max-width:90vw;box-shadow:0 2px 16px rgba(0,0,0,0.2);position:relative;">
                 <button id="closePopupBtn" style="position:absolute;top:8px;right:8px;font-size:20px;background:none;border:none;cursor:pointer;">&times;</button>
                 <h4 class="mb-3">Thông tin sinh viên</h4>
                 <ul style="list-style:none;padding:0;">
-                    <li><b>Mã số sinh viên:</b> ${student.id}</li>
-                    <li><b>Họ và tên:</b> ${student.fullName}</li>
-                    <li><b>Lớp:</b> ${student.class}</li>
-                    <li><b>Email:</b> ${student.email}</li>
-                    <li><b>Số tiền cần đóng học phí:</b> ${student.tuition.toLocaleString()} VND</li>
+                    <li><b>Mã số sinh viên:</b> ${student.student_id}</li>
+                    <li><b>Họ và tên:</b> ${student.full_name}</li>
+                    <li><b>Khoa:</b> ${student.faculty}</li>
+                    <li><b>Học kỳ:</b> ${student.semester}</li>
+                    <li><b>Số tiền cần đóng học phí:</b> ${parseFloat(student.amount).toLocaleString()} VND</li>
                 </ul>
                 <div class="d-flex justify-content-end gap-2 mt-4">
                     <button id="cancelPopupBtn" class="btn btn-secondary">Cancel</button>
@@ -69,54 +97,64 @@ function showStudentPopup(student) {
             </div>
         </div>
     `;
-    // Thêm popup vào body
-    document.body.insertAdjacentHTML('beforeend', popupHtml);
-    // Đóng popup khi bấm nút X hoặc Cancel
-    document.getElementById('closePopupBtn').onclick = function () {
-        document.getElementById('studentPopup').remove();
-    };
-    document.getElementById('cancelPopupBtn').onclick = function () {
-        document.getElementById('studentPopup').remove();
-    };
-    // Đóng popup khi click ra ngoài
-    document.getElementById('studentPopup').onclick = function (e) {
-        if (e.target.id === 'studentPopup') this.remove();
-    };
-    // Xử lý nút Thanh toán (chưa làm gì, chỉ log ra console)
-    document.getElementById('payPopupBtn').onclick = function () {
-        // Lưu dữ liệu user và sinh viên vào localStorage
-        localStorage.setItem('userInfo', JSON.stringify(userInfo));
-        localStorage.setItem('studentInfo', JSON.stringify(student));
-        // Chuyển sang trang xác nhận
-        window.location.href = '../html/confirm.html';
-    };
-}
+    document.body.insertAdjacentHTML("beforeend", popupHtml);
 
-// Xử lý sự kiện form tìm kiếm
-const searchForm = document.getElementById('searchForm');
-if (searchForm) {
-    searchForm.addEventListener('submit', function (e) {
-        e.preventDefault();
-        handleStudentSearch();
-    });
-    // Thêm sự kiện click trực tiếp cho nút Search
-    const searchBtn = searchForm.querySelector('button[type="submit"]');
-    if (searchBtn) {
-        searchBtn.addEventListener('click', function (e) {
-            e.preventDefault();
-            handleStudentSearch();
-        });
-    }
+    document.getElementById("closePopupBtn").onclick = () => document.getElementById("studentPopup").remove();
+    document.getElementById("cancelPopupBtn").onclick = () => document.getElementById("studentPopup").remove();
+    document.getElementById("studentPopup").onclick = (e) => {
+        if (e.target.id === "studentPopup") e.target.remove();
+    };
+
+    document.getElementById("payPopupBtn").onclick = () => {
+        localStorage.setItem("studentInfo", JSON.stringify(student));
+        window.location.href = "../html/confirm.html";
+    };
 }
 
 // Hàm xử lý tìm kiếm sinh viên
-function handleStudentSearch() {
-    const studentID = document.getElementById('studentID').value.trim();
-    const student = findStudentById(studentID);
+async function handleStudentSearch() {
+    const studentID = document.getElementById("studentID").value.trim();
+    if (!studentID) {
+        alert("Vui lòng nhập mã số sinh viên.");
+        return;
+    }
+
+    const student = await findStudentById(studentID);
+
     if (student) {
         showStudentPopup(student);
-        document.getElementById('studentResult').innerHTML = '';
+        document.getElementById("studentResult").innerHTML = "";
     } else {
-        document.getElementById('studentResult').innerHTML = '<div class="alert alert-danger">Không tìm thấy sinh viên!</div>';
+        document.getElementById("studentResult").innerHTML =
+            '<div class="alert alert-danger">Không tìm thấy sinh viên!</div>';
     }
+}
+
+window.addEventListener("DOMContentLoaded", () => {
+    loadUserInfo();
+    loadTransactionHistory();
+
+    const searchForm = document.getElementById("searchForm");
+    if (searchForm) {
+        searchForm.addEventListener("submit", async function (e) {
+            e.preventDefault();
+            await handleStudentSearch();
+        });
+
+        const searchBtn = searchForm.querySelector('button[type="submit"]');
+        if (searchBtn) {
+            searchBtn.addEventListener("click", async function (e) {
+                e.preventDefault();
+                await handleStudentSearch();
+            });
+        }
+    }
+});
+
+const logoutBtn = document.getElementById("logoutBtn");
+if (logoutBtn) {
+    logoutBtn.addEventListener("click", () => {
+        localStorage.removeItem("username"); // Xóa thông tin đăng nhập
+        window.location.href = "/"; // Chuyển về trang chủ
+    });
 }
