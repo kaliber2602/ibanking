@@ -107,7 +107,7 @@ function showStudentPopup(student) {
 
     document.getElementById("payPopupBtn").onclick = () => {
         localStorage.setItem("studentInfo", JSON.stringify(student));
-        window.location.href = "../html/confirm.html";
+        window.location.href = "/confirm-transaction";
     };
 }
 

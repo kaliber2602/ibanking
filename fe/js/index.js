@@ -1,8 +1,8 @@
 document.addEventListener("DOMContentLoaded", function () {
   const loginForm = document.getElementById("loginForm");
   const forgotPasswordLink = document.getElementById("forgotPasswordLink");
+  const loginMessage = document.getElementById("loginMessage");
 
-  // Xử lý đăng nhập
   loginForm.addEventListener("submit", async function (e) {
     e.preventDefault();
 
@@ -10,12 +10,14 @@ document.addEventListener("DOMContentLoaded", function () {
     const password = document.getElementById("password").value;
 
     if (!username || !password) {
-      alert("Vui lòng nhập đầy đủ username và mật khẩu.");
+      loginMessage.textContent = "Vui lòng nhập đầy đủ username và mật khẩu.";
+      loginMessage.className = "text-danger mt-2";
       return;
     }
 
     if (password.length < 8) {
-      alert("Mật khẩu phải có ít nhất 8 ký tự.");
+      loginMessage.textContent = "Mật khẩu phải có ít nhất 8 ký tự.";
+      loginMessage.className = "text-danger mt-2";
       return;
     }
 
@@ -32,12 +34,20 @@ document.addEventListener("DOMContentLoaded", function () {
 
       if (result.success && result.redirect) {
         localStorage.setItem("username", username);
-        window.location.href = result.redirect;
+
+        loginMessage.textContent = "Đăng nhập thành công! Đang chuyển hướng...";
+        loginMessage.className = "text-success mt-2";
+
+        setTimeout(() => {
+          window.location.href = result.redirect;
+        }, 2000);
       } else {
-        alert(result.message || "Đăng nhập thất bại.");
+        loginMessage.textContent = result.message || "Đăng nhập thất bại.";
+        loginMessage.className = "text-danger mt-2";
       }
     } catch (error) {
-      alert("Lỗi kết nối tới máy chủ. Vui lòng thử lại sau.");
+      loginMessage.textContent = "Lỗi kết nối tới máy chủ. Vui lòng thử lại sau.";
+      loginMessage.className = "text-danger mt-2";
     }
   });
 
