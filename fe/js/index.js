@@ -25,9 +25,12 @@ document.addEventListener("DOMContentLoaded", function () {
       const response = await fetch("/login", {
         method: "POST",
         headers: {
-          "Content-Type": "application/x-www-form-urlencoded",
+          "Content-Type": "application/json",
         },
-        body: `username=${encodeURIComponent(username)}&password=${encodeURIComponent(password)}`
+        body: JSON.stringify({
+          username: username,
+          password: password
+        })
       });
 
       const result = await response.json();
@@ -49,6 +52,7 @@ document.addEventListener("DOMContentLoaded", function () {
       loginMessage.textContent = "Lỗi kết nối tới máy chủ. Vui lòng thử lại sau.";
       loginMessage.className = "text-danger mt-2";
     }
+
   });
 
   if (forgotPasswordLink) {

@@ -77,6 +77,7 @@ if (!in_array($providerName, ['Google', 'Microsoft', 'Yahoo'])) {
 //These details are obtained by setting up an app in the Google developer console,
 //or whichever provider you're using.
 $clientId = '';
+
 $clientSecret = '';
 
 //If this automatic URL doesn't work, set it yourself manually to the URL of this script
