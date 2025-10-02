@@ -1,73 +1,129 @@
 document.addEventListener('DOMContentLoaded', async function () {
-  const username = localStorage.getItem('username');       // ví dụ: "khachhang123"
-  const studentId = localStorage.getItem('studentId');     // ví dụ: "SV001"
-  alert(studentId);
-  alert(username);
+  const username = localStorage.getItem('username');
+  const studentId = localStorage.getItem('studentId');
+
   if (!username || !studentId) {
     alert('Thiếu thông tin đăng nhập hoặc sinh viên.');
     return;
   }
 
-  // Gọi FastAPI để lấy thông tin từ PHP
+  let user = null;
+  let student = null;
+  let generatedToken = "";
+  let otpExpires= 0;
+  let userEmail = "";
   try {
-    const res = await fetch('/get-trans-info', {
+    // Bước 1: Lấy thông tin giao dịch
+    const res = await fetch('http://localhost:8004/get-trans-info', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ username, student_id: studentId })
     });
 
     const result = await res.json();
-
     if (!result.success) {
       alert(result.message || 'Không thể lấy thông tin.');
       return;
     }
 
-    const user = result.data.user;
-    const student = result.data.student;
+    user = result.data.user;
+    student = result.data.student;
 
-    // Lưu vào localStorage nếu cần
-    localStorage.setItem('userInfo', JSON.stringify(user));
-    localStorage.setItem('studentInfo', JSON.stringify(student));
-
-    // Render thông tin người dùng
+    // Bước 2: Hiển thị thông tin lên giao diện
     document.getElementById('userFullName').textContent = user.full_name;
     document.getElementById('userEmail').textContent = user.email;
     document.getElementById('userBalance').textContent = user.balance.toLocaleString() + ' VND';
-
-    // Render thông tin sinh viên
     document.getElementById('studentId').textContent = student.student_id;
     document.getElementById('studentFullName').textContent = student.full_name;
     document.getElementById('studentClass').textContent = student.faculty + ' - ' + student.semester;
     document.getElementById('studentTuition').textContent = student.amount.toLocaleString() + ' VND';
+    document.getElementById('confirmDate').textContent = new Date().toLocaleString('vi-VN');
 
-    // Render ngày xác nhận
-    const now = new Date();
-    const dateStr = now.toLocaleDateString('vi-VN') + ' ' + now.toLocaleTimeString('vi-VN');
-    document.getElementById('confirmDate').textContent = dateStr;
+    // Bước 3: Xử lý sự kiện xác nhận
+    document.getElementById('confirmBtn').onclick = function () {
+      const ruleModal = new bootstrap.Modal(document.getElementById('ruleModal'));
+      ruleModal.show();
 
-    // Xử lý nút xác nhận thanh toán
-    document.getElementById('confirmBtn').onclick = async function () {
-      const confirmRes = await fetch('/confirm-payment', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          username,
-          student_id: student.student_id,
-          amount: student.amount
-        })
-      });
+      document.getElementById('agreeBtn').onclick = async function () {
+        ruleModal.hide();
 
-      const confirmResult = await confirmRes.json();
+        try {
+          userEmail = user.email;
+          // Bước 4: Gửi OTP
+          const otpRes = await fetch('http://localhost:8003/send-otp', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ email: userEmail })
+          });
 
-      if (confirmRes.ok) {
-        alert(confirmResult.message);
-        user.balance = confirmResult.newBalance;
-        localStorage.setItem('userInfo', JSON.stringify(user));
-        window.location.href = '/fe/pages/success.html';
-      } else {
-        alert(confirmResult.detail || 'Thanh toán thất bại.');
-      }
+          const otpResult = await otpRes.json();
+
+          if (!otpResult.success) {
+            alert(otpResult.message || 'Không thể gửi OTP.');
+            return;
+          }
+
+          alert('Mã OTP đã được gửi đến email của bạn.');
+
+          generatedToken = otpResult.token;
+          otpExpires = otpResult.expires;
+
+          alert("mail: " + userEmail + "Token: " + generatedToken + " Expires: " + otpExpires);
+
+          document.getElementById('otpSection').style.display = 'block';
+
+          // Bước 5: Xác minh OTP
+          document.getElementById('verifyOtpBtn').onclick = async function () {
+            const otp = document.getElementById('otpInput').value.trim();
+            if (!otp) {
+              alert('Vui lòng nhập mã OTP.');
+              return;
+            }
+
+            const verifyRes = await fetch('http://localhost:8003/verify-otp', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ 
+                email: userEmail,
+                otp: otp,
+                token: generatedToken,
+                expires: otpExpires
+              })
+            });
+
+            const verifyResult = await verifyRes.json();
+            if (!verifyResult.success) {
+              alert(verifyResult.message || 'Mã OTP không hợp lệ hoặc đã hết hạn.');
+              return;
+            }
+
+            alert('Xác minh OTP thành công!');
+            alert("Đang xử lý giao dịch...");
+
+            // Bước 6: Gọi xử lý giao dịch
+            // const confirmRes = await fetch('http://localhost:8004/confirm-payment', {
+            //   method: 'POST',
+            //   headers: { 'Content-Type': 'application/json' },
+            //   body: JSON.stringify({
+            //     username,
+            //     student_id: student.student_id,
+            //     amount: student.amount
+            //   })
+            // });
+
+            // const confirmResult = await confirmRes.json();
+            // if (confirmRes.ok && confirmResult.success) {
+            //   alert(confirmResult.message || 'Giao dịch thành công.');
+            //   window.location.href = '/fe/pages/success.html';
+            // } else {
+            //   alert(confirmResult.message || 'Giao dịch thất bại.');
+            // }
+          };
+        } catch (err) {
+          console.error(err);
+          alert('Lỗi khi gửi hoặc xác minh OTP.');
+        }
+      };
     };
   } catch (error) {
     console.error(error);

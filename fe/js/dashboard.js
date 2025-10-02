@@ -8,7 +8,7 @@ async function loadUserInfo() {
     }
 
     try {
-        const response = await fetch(`/user-info?username=${encodeURIComponent(username)}`);
+        const response = await fetch(`http://localhost:8002/user-info?username=${encodeURIComponent(username)}`);
         const result = await response.json();
 
         if (result.success) {
@@ -30,7 +30,7 @@ async function loadTransactionHistory() {
     if (!username) return;
 
     try {
-        const response = await fetch("/transactions", {
+        const response = await fetch("http://localhost:8004/transactions", {
             method: "POST",
             headers: {
                 "Content-Type": "application/json"
@@ -67,7 +67,7 @@ async function loadTransactionHistory() {
 // Hàm gọi Gateway để tìm sinh viên theo ID
 async function findStudentById(id) {
     try {
-        const response = await fetch(`/gateway/find-student.php?id=${encodeURIComponent(id)}`);
+        const response = await fetch(`http://localhost:8005/gateway/find-student.php?id=${encodeURIComponent(id)}`);
         const result = await response.json();
         return result.success ? result.data : null;
     } catch (error) {

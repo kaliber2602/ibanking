@@ -9,7 +9,7 @@ document.getElementById("usernameForm").addEventListener("submit", async functio
 
     try {
         // Bước 1: Kiểm tra username có tồn tại
-        const checkResp = await fetch("/check-username", {
+        const checkResp = await fetch("http://localhost:8001/check-username", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({ username })
@@ -25,7 +25,7 @@ document.getElementById("usernameForm").addEventListener("submit", async functio
         errorDiv.style.display = "none";
 
         // Bước 2: Lấy email từ database
-        const emailResp = await fetch("/get-email", {
+        const emailResp = await fetch("http://localhost:8002/get-email", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({ username })
@@ -41,7 +41,7 @@ document.getElementById("usernameForm").addEventListener("submit", async functio
         userEmail = emailResult.email;
 
         // Bước 3: Gửi OTP qua backend
-        const otpResp = await fetch("/send-otp", {
+        const otpResp = await fetch("http://localhost:8003/send-otp", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({ email: userEmail })
@@ -75,7 +75,7 @@ document.getElementById("otpForm").addEventListener("submit", async function (e)
     const otpMsg = document.getElementById("otpMessage");
     alert("Verifying OTP: " + otp + " for email: " + userEmail + " with token: " + generatedToken + " expiring at: " + otpExpires);
     try {
-        const verifyResp = await fetch("/verify-otp", {
+        const verifyResp = await fetch("http://localhost:8003/verify-otp", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({
@@ -110,7 +110,7 @@ document.getElementById("otpForm").addEventListener("submit", async function (e)
                         resetMsg.textContent = "Mật khẩu phải tối thiểu 8 ký tự.";
                         resetMsg.className = "text-danger mt-2";
                     } else {
-                        fetch("/reset-password", {
+                        fetch("http://localhost:8001/reset-password", {
                             method: "POST",
                             headers: { "Content-Type": "application/json" },
                             body: JSON.stringify({
